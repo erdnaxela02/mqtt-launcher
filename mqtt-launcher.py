@@ -30,24 +30,29 @@
 __author__    = 'Jan-Piet Mens <jpmens()gmail.com>'
 __copyright__ = 'Copyright 2014 Jan-Piet Mens'
 
-import os
-import sys
-import subprocess
 import logging
-import paho.mqtt.client as paho # pip install paho-mqtt
-import time
+import os
 import socket
 import string
+import subprocess
+import sys
+import time
 
-qos=2
+import paho.mqtt.client as paho # pip install paho-mqtt
+
+QOS=2
 CONFIG=os.getenv('MQTTLAUNCHERCONFIG', 'launcher.conf')
 
 class Config(object):
+    """This class is used to access config file."""
     def __init__(self, filename=CONFIG):
         self.config = {}
         exec(compile(open(filename, "rb").read(), filename, 'exec'), self.config)
 
     def get(self, key, default=None):
+        """Get the value of an option, if it exists.
+        Return the default value otherwise.
+        """
         return self.config.get(key, default)
 
 try:
@@ -69,6 +74,7 @@ logging.info("Starting")
 logging.debug("DEBUG MODE")
 
 def runprog(topic, param=None):
+    """Execute the program command from config file."""
 
     publish = "%s/report" % topic
 
@@ -76,7 +82,7 @@ def runprog(topic, param=None):
         logging.debug("Param for topic %s is not printable; skipping" % (topic))
         return
 
-    if not topic in topiclist:
+    if topic not in topiclist:
         logging.info("Topic %s isn't configured" % topic)
         return
 
@@ -92,30 +98,40 @@ def runprog(topic, param=None):
     logging.debug("Running t=%s: %s" % (topic, cmd))
 
     try:
-        res = subprocess.check_output(cmd, stdin=None, stderr=subprocess.STDOUT, shell=False, universal_newlines=True, cwd='/tmp')
+        res = subprocess.check_output(
+            cmd,
+            stdin=None,
+            stderr=subprocess.STDOUT,
+            shell=False,
+            universal_newlines=True,
+            cwd='/tmp'
+        )
     except Exception as e:
         res = "*****> %s" % str(e)
 
     payload = res.rstrip('\n')
-    (res, mid) =  mqttc.publish(publish, payload, qos=qos, retain=False)
+    (res, mid) =  mqttc.publish(publish, payload, qos=QOS, retain=False)
 
 def on_connect(client, userdata, flags, reason_code, properties):
+    """When the connection is established."""
     if reason_code == 0:
         logging.debug("Connected to MQTT broker, subscribing to topics...")
         for topic in topiclist:
-            mqttc.subscribe(topic, qos)
-            logging.debug("Subscribed to Topic \"%s\", QOS %s", topic, qos)
+            mqttc.subscribe(topic, QOS)
+            logging.debug("Subscribed to Topic \"%s\", QOS %s", topic, QOS)
     if reason_code > 0:
         logging.debug("Connected with result code: %s", reason_code)
         logging.debug("No connection. Aborting")
         sys.exit(2)
 
 def on_message(client, userdata, msg):
+    """When a new message is received on the topic."""
     logging.debug(msg.topic+" "+str(msg.qos)+" "+msg.payload.decode('utf-8'))
 
     runprog(msg.topic, msg.payload.decode('utf-8'))
 
 def on_disconnect(client, userdata, flags, reason_code, properties):
+    """When the connection is over."""
     logging.debug("OOOOPS! launcher disconnects")
     time.sleep(10)
 
@@ -134,7 +150,12 @@ if __name__ == '__main__':
     transportType = cf.get('mqtt_transport_type', 'tcp')
 
     # initialise MQTT broker connection
-    mqttc = paho.Client(paho.CallbackAPIVersion.VERSION2, clientid, clean_session=False, transport=transportType)
+    mqttc = paho.Client(
+        paho.CallbackAPIVersion.VERSION2,
+        clientid,
+        clean_session=False,
+        transport=transportType
+    )
 
     mqttc.on_message = on_message
     mqttc.on_connect = on_connect
