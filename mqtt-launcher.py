@@ -58,7 +58,7 @@ class Config(object):
 try:
     cf = Config()
 except Exception as e:
-    print("Cannot load configuration from file %s: %s" % (CONFIG, str(e)))
+    print(f"[INFO]: Cannot load configuration from file '{CONFIG}': {str(e)}")
     sys.exit(2)
 
 LOGFILE = cf.get('logfile', 'logfile')
@@ -76,14 +76,14 @@ logging.debug("DEBUG MODE")
 def runprog(topic, param=None):
     """Execute the program command from config file."""
 
-    publish = "%s/report" % topic
+    publish = f"{topic}/report"
 
-    if param is not None and all(c in string.printable for c in param) == False:
-        logging.debug("Param for topic %s is not printable; skipping" % (topic))
+    if param is not None and all(c in string.printable for c in param) is False:
+        logging.debug("Param for topic %s is not printable; skipping", topic)
         return
 
     if topic not in topiclist:
-        logging.info("Topic %s isn't configured" % topic)
+        logging.info("Topic %s isn't configured", topic)
         return
 
     if param is not None and param in topiclist[topic]:
@@ -92,10 +92,10 @@ def runprog(topic, param=None):
         if None in topiclist[topic]: ### and topiclist[topic][None] is not None:
             cmd = [p.replace('@!@', param) for p in topiclist[topic][None]]
         else:
-            logging.info("No matching param (%s) for %s" % (param, topic))
+            logging.info("No matching param (%s) for %s", param, topic)
             return
 
-    logging.debug("Running t=%s: %s" % (topic, cmd))
+    logging.debug("Running t=%s: %s", topic, cmd)
 
     try:
         res = subprocess.check_output(
@@ -145,7 +145,7 @@ if __name__ == '__main__':
         logging.info("No topic list. Aborting")
         sys.exit(2)
 
-    clientid = cf.get('mqtt_clientid', 'mqtt-launcher-%s' % os.getpid())
+    clientid = cf.get('mqtt_clientid', f'mqtt-launcher-{os.getpid()}')
 
     transportType = cf.get('mqtt_transport_type', 'tcp')
 
